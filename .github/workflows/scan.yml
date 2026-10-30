@@ -1,18 +1,12 @@
-name: scanner
-on:
-  schedule:
-    - cron: "*/5 3-10 * * 1-5"
-  workflow_dispatch:
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install yfinance pandas requests
-      - run: python bot.py
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+def notify(msg):
+    print(msg, flush=True)
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("ERROR: secrets are missing or empty")
+        return
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=10)
+        print("Telegram response:", r.status_code, r.text)
+    except Exception as e:
+        print("Telegram error:", e)
