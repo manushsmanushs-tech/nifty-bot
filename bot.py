@@ -78,13 +78,16 @@ def check_signal(df):
 
 def notify(msg):
     print(msg, flush=True)
-    if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-                data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=10)
-        except Exception as e:
-            print("Telegram error:", e)
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("ERROR: secrets are missing or empty")
+        return
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=10)
+        print("Telegram response:", r.status_code, r.text)
+    except Exception as e:
+        print("Telegram error:", e)
 
 
 def main():
