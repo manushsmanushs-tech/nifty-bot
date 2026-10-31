@@ -37,13 +37,13 @@ def scan_symbol(sym, df):
             a, b, d = i - 3, i - 2, i - 1
             dh, dl = h[:i].max(), l[:i].min()
             side = None
-            if ((c[d] / prev_close - 1) * 100 >= MIN_MOVE
+            if ((dh / prev_close - 1) * 100 >= MIN_MOVE
                     and c[a] < o[a] and c[b] < o[b] and c[d] < o[d]
                     and c[b] < c[a] and c[d] < c[b]
                     and h[b] < h[a] and h[d] < h[b]
                     and max(h[a], h[b], h[d]) < dh and c[i] > dh):
                 side = "BUY"
-            elif ((1 - c[d] / prev_close) * 100 >= MIN_MOVE
+            elif ((1 - dl / prev_close) * 100 >= MIN_MOVE
                     and c[a] > o[a] and c[b] > o[b] and c[d] > o[d]
                     and c[b] > c[a] and c[d] > c[b]
                     and l[b] > l[a] and l[d] > l[b]
