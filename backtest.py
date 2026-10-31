@@ -39,8 +39,8 @@ def scan_symbol(sym, df):
         done = set()
         for i in range(4, len(day)):
             dh, dl = h[:i].max(), l[:i].min()
-            up = (dh / prev_close - 1) * 100 >= MIN_MOVE and c[i] > dh
-            dn = (1 - dl / prev_close) * 100 >= MIN_MOVE and c[i] < dl
+            up = (c[i] / prev_close - 1) * 100 >= MIN_MOVE and c[i] > dh
+            dn = (1 - c[i] / prev_close) * 100 >= MIN_MOVE and c[i] < dl
             if not (up or dn):
                 continue
             side, gap, a, p = None, 0, 0, 0
@@ -95,7 +95,7 @@ def scan_symbol(sym, df):
 
 
 def explain(sym, df):
-    """Show every '3 red/green candles below DH/DL' window of one day and why it passed or failed."""
+    """Plain-language report: every group of 3 red/green candles below DH/DL on one day."""
     dates = df.index.date
     days = sorted(set(dates))
     day_d = pd.Timestamp(CHECK_DATE).date() if CHECK_DATE else days[-1]
@@ -106,15 +106,15 @@ def explain(sym, df):
     day = df[dates == day_d]
     t = day.index.strftime("%H:%M")
     o, h, l, c = (day[x].values for x in ("Open", "High", "Low", "Close"))
-    lines = [f"{name} {day_d} | prev close {prev_close:.2f} | day high {h.max():.2f} "
-             f"({(h.max() / prev_close - 1) * 100:+.1f}%) | day low {l.min():.2f} "
-             f"({(l.min() / prev_close - 1) * 100:+.1f}%) | {len(day)} candles"]
+    lines = [f"{name} on {day_d}: prev close {prev_close:.2f}, day high {h.max():.2f} "
+             f"({(h.max() / prev_close - 1) * 100:+.1f}%), day low {l.min():.2f} "
+             f"({(l.min() / prev_close - 1) * 100:+.1f}%)"]
     hits = [r for r in scan_symbol(sym, df) if r["date"] == str(day_d)]
     if hits:
         for r in hits:
-            lines.append(f"SIGNAL (wait={WAIT}): {r['side']} at {r['time']}, pullback {r['pullback']}")
+            lines.append(f"==> BOT SIGNAL: {r['side']} at {r['time']} (3 candles {r['pullback']})")
     else:
-        lines.append(f"No signal with current settings (min move {MIN_MOVE}%, wait {WAIT}).")
+        lines.append(f"==> BOT SIGNAL: none (min move {MIN_MOVE}%, wait {WAIT})")
     for side in ("BUY", "SELL"):
         found = []
         for p in range(3, len(day)):
@@ -123,29 +123,39 @@ def explain(sym, df):
                 ok = all(c[x] < o[x] for x in (a, a + 1, p))
                 ref = h[:a].max()
                 below = h[a:p + 1].max() < ref
-                move = (ref / prev_close - 1) * 100
                 closes = c[a] > c[a + 1] > c[p]
                 ext = h[a] > h[a + 1] > h[p]
                 brk = next((j for j in range(p + 1, len(day)) if c[j] > ref), None)
+                move = (c[brk] / prev_close - 1) * 100 if brk is not None else 0
             else:
                 ok = all(c[x] > o[x] for x in (a, a + 1, p))
                 ref = l[:a].min()
                 below = l[a:p + 1].min() > ref
-                move = (1 - ref / prev_close) * 100
                 closes = c[a] < c[a + 1] < c[p]
                 ext = l[a] < l[a + 1] < l[p]
                 brk = next((j for j in range(p + 1, len(day)) if c[j] < ref), None)
+                move = (1 - c[brk] / prev_close) * 100 if brk is not None else 0
             if not (ok and below):
                 continue
+            why = []
+            if not closes:
+                why.append("closes not each lower" if side == "BUY" else "closes not each higher")
+            if not ext:
+                why.append("highs not each lower" if side == "BUY" else "lows not each higher")
+            if brk is None:
+                why.append("price never broke it this day")
+            else:
+                gap = brk - p - 1
+                if gap > WAIT:
+                    why.append(f"breakout came {gap} candles later (wait={WAIT})")
+                if move < MIN_MOVE:
+                    why.append(f"stock only {move:.1f}% at breakout")
             lvl = "DH" if side == "BUY" else "DL"
-            txt = (f" {t[a]}-{t[p]} {lvl} {ref:.2f} move {move:.1f}% "
-                   f"{'OK' if move >= MIN_MOVE else 'FAIL'}, closes {'OK' if closes else 'FAIL'}, "
-                   f"{'highs' if side == 'BUY' else 'lows'} {'OK' if ext else 'FAIL'}")
-            txt += (f" -> breakout {t[brk]} (gap {brk - p - 1})" if brk is not None
-                    else " -> no breakout this day")
-            found.append(txt)
-        lines.append(f"{side}: {len(found)} windows of 3 {'red' if side == 'BUY' else 'green'} candles "
-                     f"below {'DH' if side == 'BUY' else 'DL'}")
+            brk_txt = f"breakout {t[brk]}" if brk is not None else "no breakout"
+            found.append(f" {t[a]}-{t[p]} {lvl} {ref:.2f}, {brk_txt}: "
+                         + ("OK = SIGNAL" if not why else "; ".join(why)))
+        lines.append(f"{side} setups (3 {'red' if side == 'BUY' else 'green'} candles "
+                     f"staying below {'DH' if side == 'BUY' else 'DL'}): {len(found)}")
         lines += found[:10]
     return lines
 
