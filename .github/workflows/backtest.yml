@@ -8,6 +8,15 @@ on:
       min_move:
         description: "Minimum % move filter"
         default: "1.0"
+      wait:
+        description: "Extra candles allowed before the breakout (0 = next candle only)"
+        default: "0"
+      check:
+        description: "Stocks to explain, e.g. INDIACEM,SONACOMS (empty = full scan)"
+        default: ""
+      check_date:
+        description: "Date for check, e.g. 2026-10-30 (empty = last trading day)"
+        default: ""
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -21,5 +30,8 @@ jobs:
         env:
           PERIOD: ${{ inputs.period }}
           MIN_MOVE: ${{ inputs.min_move }}
+          WAIT: ${{ inputs.wait }}
+          CHECK: ${{ inputs.check }}
+          CHECK_DATE: ${{ inputs.check_date }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
