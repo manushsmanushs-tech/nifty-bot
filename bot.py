@@ -39,6 +39,7 @@ def fetch_5m(symbols):
         if df.empty:
             continue
         df.index = df.index.tz_convert(TZ) if df.index.tz else df.index.tz_localize(TZ)
+        # drop the still-forming candle
         df = df[df.index + pd.Timedelta(minutes=5) <= now]
         if not df.empty:
             out[sym] = df
@@ -51,14 +52,17 @@ def check_signal(df):
     prev = df[df.index.date < today]
     if prev.empty or len(day) < 4:
         return None
+
     prev_close = prev["Close"].iloc[-1]
-    brk = day.iloc[-1]
+    brk = day.iloc[-1]                      # breakout candle
     c1, c2, c3 = day.iloc[-4], day.iloc[-3], day.iloc[-2]
     before = day.iloc[:-1]
     day_high = before["High"].max()
     day_low = before["Low"].min()
 
-    if (c3["Close"] / prev_close - 1) * 100 >= MIN_MOVE_PCT:
+    # ---------- LONG: stock rose >= 1% (measured at the Day High) ----------
+    up_pct = (day_high / prev_close - 1) * 100
+    if up_pct >= MIN_MOVE_PCT:
         if (all(c["Close"] < c["Open"] for c in (c1, c2, c3))
                 and c2["Close"] < c1["Close"] and c3["Close"] < c2["Close"]
                 and c2["High"] < c1["High"] and c3["High"] < c2["High"]
@@ -66,7 +70,9 @@ def check_signal(df):
                 and brk["Close"] > day_high):
             return "BUY"
 
-    if (1 - c3["Close"] / prev_close) * 100 >= MIN_MOVE_PCT:
+    # ---------- SHORT: stock fell >= 1% (measured at the Day Low) ----------
+    dn_pct = (1 - day_low / prev_close) * 100
+    if dn_pct >= MIN_MOVE_PCT:
         if (all(c["Close"] > c["Open"] for c in (c1, c2, c3))
                 and c2["Close"] > c1["Close"] and c3["Close"] > c2["Close"]
                 and c2["Low"] > c1["Low"] and c3["Low"] > c2["Low"]
