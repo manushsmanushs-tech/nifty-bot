@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "*/5 3-10 * * 1-5"
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test message"
+        type: boolean
+        default: false
 concurrency:
   group: scanner
   cancel-in-progress: false
@@ -19,6 +24,7 @@ jobs:
       - run: pip install yfinance pandas requests
       - run: python bot.py
         env:
+          TEST_MODE: ${{ inputs.test }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       - name: Remember sent signals
