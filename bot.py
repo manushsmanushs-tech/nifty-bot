@@ -154,7 +154,7 @@ def save_sent(sent):
 
 
 def main():
-    if os.getenv("TEST_MODE") == "true":
+    GITHUB_EVENT_NAME
         notify("Test: your bot is working")
     now = now_ist()
     if now.weekday() >= 5 or not ("09:15" <= now.strftime("%H:%M") <= "15:50"):
